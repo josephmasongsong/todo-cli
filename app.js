@@ -1,5 +1,5 @@
 const fs = require('fs/promises');
-const { promptUser, mainMenu, selectTodo, addTodo, todoChoices, editTodo } = require('./prompts');
+const inquirer = require('inquirer');
 
 async function fetchTodos() {
   try {
@@ -20,76 +20,132 @@ async function saveToJson(todos) {
   }
 }
 
-async function findTodo({ id }) {
-  const todos = await fetchTodos();
-  const todo = todos.find(todo => todo.id === id);
-  promptUser(todoChoices(todo), todoChoicesPath);
-}
-
-async function mapTodosToChoices() {
+async function generateChoices() {
   const todos = await fetchTodos();
   return todos.map(({ id, title, complete }) => ({
-    name: `${title} - ${!complete ? '❎ incomplete' : '✅ complete'}`,
+    name: `${!complete ? '❌' : '✅'} ${title}`,
     value: id,
   }));
 }
 
-async function createTodo({ title }) {
+async function prompt(questions, cb = null, id = null) {
+  const answers = await inquirer.prompt(questions);
+  if (id != undefined) answers.id = id;
+  if (cb != undefined) cb(answers);
+}
+
+function generateId() {
+  return Math.random()
+    .toString(36)
+    .replace(/[^a-z0-9]+/g, '')
+    .substring(0, 8);
+}
+
+async function createTodo(title) {
   const todo = {
-    id: Math.random()
-      .toString(36)
-      .replace(/[^a-z0-9]+/g, '')
-      .substring(0, 8),
+    id: generateId(),
     title,
     complete: false,
   };
   const todos = await fetchTodos();
   todos.push(todo);
   await saveToJson(todos);
-  promptUser(todoChoices(todo), choice => console.log(choice));
+  prompt(menuQuestions, choicesPath);
 }
 
-async function deleteTodo({ id }) {
+async function updateTitle(id, title) {
+  const todos = await fetchTodos();
+  const updatedTodos = todos.map(todo => (todo.id === id ? { ...todo, title } : todo));
+  await saveToJson(updatedTodos);
+  prompt(menuQuestions, choicesPath);
+}
+
+async function updateStatus(id, complete) {
+  const todos = await fetchTodos();
+  const updatedTodos = todos.map(todo => (todo.id === id ? { ...todo, complete } : todo));
+  await saveToJson(updatedTodos);
+  prompt(menuQuestions, choicesPath);
+}
+
+async function deleteTodo(id) {
   const todos = await fetchTodos();
   const updatedTodos = todos.filter(todo => todo.id !== id);
   await saveToJson(updatedTodos);
+  prompt(menuQuestions, choicesPath);
 }
 
-async function updateTodos(updatedTodo) {
-  const todos = await fetchTodos();
-  const updatedTodos = todos.map(todo => (todo.id === updatedTodo.id ? updatedTodo : todo));
-  await saveToJson(updatedTodos);
-  promptUser(selectTodo(await mapTodosToChoices()), findTodo);
-}
-
-function editTitle({ title }) {
-  const updatedTodo = {
-    ...todo,
-    title,
+function choicesPath(choice) {
+  const pathObject = {
+    create: ({ title }) => createTodo(title),
+    list: ({ id }) => prompt(todoMenuQuestions, choicesPath, id),
+    edit: ({ id, title }) => updateTitle(id, title),
+    todos: () => prompt(menuQuestions, choicesPath),
+    delete: ({ remove, id }) => {
+      remove ? deleteTodo(id) : prompt(todoMenuQuestions, choicesPath);
+    },
+    status: ({ complete, id }) => updateStatus(id, complete),
+    quit: () => console.log('Goodbye!'),
   };
-  updateTodos(updatedTodo);
+  return pathObject[choice['menu']](choice);
 }
 
-function toggleComplete(todo) {
-  const updatedTodo = {
-    ...todo,
-    complete: !todo.complete,
-  };
-  updateTodos(updatedTodo);
-}
+const menuQuestions = [
+  {
+    type: 'list',
+    name: 'menu',
+    message: 'Please select one of the following choices:',
+    choices: [
+      { name: 'Create a new todo', value: 'create' },
+      { name: 'Show me a list of todos', value: 'list' },
+      { name: 'Quit', value: 'quit' },
+    ],
+  },
+  {
+    type: 'input',
+    name: 'title',
+    message: 'Enter your todo...',
+    when: answers => answers.menu === 'create',
+  },
+  {
+    type: 'list',
+    name: 'id',
+    message: 'Select a todo for more options...',
+    pageSize: 25,
+    choices: async () => await generateChoices(),
+    when: answers => answers.menu === 'list',
+  },
+];
 
-async function mainMenuPath({ menu }) {
-  if (menu === 'list') promptUser(selectTodo(await mapTodosToChoices()), findTodo);
-  if (menu === 'add') promptUser(addTodo, createTodo);
-}
+const todoMenuQuestions = [
+  {
+    type: 'list',
+    name: 'menu',
+    message: 'Please choose one of the following:',
+    choices: [
+      { name: 'Edit todo', value: 'edit' },
+      { name: 'Toggle complete', value: 'status' },
+      { name: 'Delete todo', value: 'delete' },
+      { name: 'Back to menu', value: 'todos' },
+    ],
+  },
+  {
+    type: 'input',
+    name: 'title',
+    message: 'Edit your todo',
+    when: answers => answers.menu === 'edit',
+  },
+  {
+    type: 'confirm',
+    name: 'remove',
+    message: 'Are you sure you want to delete this todo?',
+    when: answers => answers.menu === 'delete',
+  },
+  {
+    type: 'confirm',
+    name: 'complete',
+    message: 'Is this todo complete?',
+    when: answers => answers.menu === 'status',
+  },
+];
 
-async function todoChoicesPath({ menu }) {
-  if (menu === 'list') promptUser(selectTodo(await mapTodosToChoices()), findTodo);
-  if (menu === 'edit') promptUser(editTodo, editTitle);
-}
-
-async function init() {
-  promptUser(mainMenu, mainMenuPath);
-}
-
-init();
+prompt(menuQuestions, choicesPath);
