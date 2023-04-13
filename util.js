@@ -1,8 +1,8 @@
 const fs = require('fs').promises;
 const inquirer = require('inquirer');
 
-const prompt = async ({ type, message, name, choices }, cb) => {
-  const answer = await inquirer.prompt([{ type, message, name, choices }]);
+const prompt = async ({ type, message, name, choices, pageSize }, cb) => {
+  const answer = await inquirer.prompt([{ type, message, name, choices, pageSize }]);
   cb(answer);
 };
 

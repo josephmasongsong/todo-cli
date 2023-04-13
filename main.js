@@ -2,6 +2,16 @@ const fs = require('fs/promises');
 const { prompt, readFile } = require('./util');
 const prompts = require('./prompts');
 
+async function tryCatch(promise) {
+  try {
+    const data = await promise;
+    return [data, null];
+  } catch (err) {
+    console.error(err);
+    return [null, err];
+  }
+}
+
 const generateId = () =>
   Math.random()
     .toString(36)
@@ -16,11 +26,21 @@ const mapTodosToChoices = async () => {
   }));
 };
 
-const getTodo = async ({ id }) => {
-  const todos = await readFile();
-  const todo = todos.find(todo => todo.id === id);
+const showTodo = async ({ id }) => {
+  const todo = await getTodo(id);
   prompt(prompts.todoOptions(todo), whatDoNext);
 };
+
+const getTodo = async id => {
+  const todos = await readFile();
+  return (todo = todos.find(todo => todo.id === id));
+};
+
+// const getTodo = async ({ id }) => {
+//   const todos = await readFile();
+//   const todo = todos.find(todo => todo.id === id);
+//   prompt(prompts.todoOptions(todo), whatDoNext);
+// };
 
 const createTodo = async ({ title }) => {
   const todo = {
@@ -35,7 +55,7 @@ const createTodo = async ({ title }) => {
   try {
     await fs.writeFile('db.json', data);
     console.log(`Successfully created todo!`);
-    prompt(prompts.selectTodo(await mapTodosToChoices()), getTodo);
+    prompt(prompts.selectTodo(await mapTodosToChoices()), showTodo);
   } catch (err) {
     console.error(err);
   }
@@ -65,9 +85,24 @@ const deleteTodo = async id => {
   }
 };
 
+const menu = {
+  new: function () {
+    prompt(prompts.createTodo, createTodo);
+  },
+  list: async function () {
+    prompt(prompts.selectTodo(await mapTodosToChoices()), showTodo);
+  },
+  delete: function () {
+    prompt(prompts.confirmDelete, choice => console.log(choice));
+  },
+  edit: function () {
+    prompt(prompts.editTodo);
+  },
+};
+
 const whatDoNext = async ({ menu }) => {
   if (menu === 'add') prompt(prompts.createTodo, createTodo);
-  if (menu === 'list') prompt(prompts.selectTodo(await mapTodosToChoices()), getTodo);
+  if (menu === 'list') prompt(prompts.selectTodo(await mapTodosToChoices()), showTodo);
   if (menu === 'edit') prompt(prompts.editTodo);
   if (menu === 'delete') prompt(prompts.confirmDelete, choice => console.log(choice));
 };

@@ -1,11 +1,17 @@
-const userMenu = {
+const inquirer = require('inquirer');
+
+async function promptUser({ type, message, name, choices, pageSize }, cb) {
+  const answer = await inquirer.prompt([{ type, message, name, choices, pageSize }]);
+  cb(answer);
+}
+
+const mainMenu = {
   type: 'list',
   name: 'menu',
   message: 'Please choose one of the following:',
   choices: [
     { name: 'Create a todo', value: 'add' },
-    { name: 'List my todos', value: 'list' },
-    { name: 'Exit', value: 'exit' },
+    { name: 'Show my todos', value: 'list' },
   ],
 };
 
@@ -15,19 +21,16 @@ const confirmDelete = {
   message: 'Are you sure you want to delete this todo?',
 };
 
-const createTodo = {
+const addTodo = {
   type: 'input',
   name: 'title',
   message: 'What is your todo?',
 };
 
-const editTodo = ({ title }) => {
-  return {
-    type: 'input',
-    name: 'title',
-    message: `Editing todo: "${title}"`,
-    default: `${title}`,
-  };
+const editTodo = {
+  type: 'input',
+  name: 'title',
+  message: 'Edit your todo',
 };
 
 const deleteTodo = ({ title }) => {
@@ -60,26 +63,28 @@ const selectTodo = choices => {
   };
 };
 
-const todoOptions = ({ complete }) => {
+const todoChoices = ({ complete }) => {
   return {
     type: 'list',
     name: 'menu',
     message: 'Please choose one of the following:',
     choices: [
-      { name: 'Edit', value: 'edit' },
-      !complete ? { name: 'Mark complete', value: 'complete' } : { name: 'Mark incomplete', value: 'incomplete' },
-      { name: 'Delete', value: 'delete' },
+      { name: 'Edit todo', value: 'edit' },
+      !complete ? { name: 'Mark complete', value: 'complete' } : { name: 'Mark incomplete', value: 'complete' },
+      { name: 'Delete todo', value: 'delete' },
+      { name: 'Back to list', value: 'list' },
     ],
   };
 };
 
 module.exports = {
-  userMenu,
-  createTodo,
+  mainMenu,
+  addTodo,
   editTodo,
   deleteTodo,
   toggleStatus,
   selectTodo,
-  todoOptions,
+  todoChoices,
   confirmDelete,
+  promptUser,
 };
