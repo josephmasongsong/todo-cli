@@ -8,9 +8,9 @@ const fetchTodos = async () => {
   return JSON.parse(data);
 };
 
-async function loadTodosData() {
+const loadTodosData = async () => {
   todos = await fetchTodos();
-}
+};
 
 const save = async newTodos => {
   const data = JSON.stringify(newTodos);
