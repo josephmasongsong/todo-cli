@@ -5,11 +5,10 @@
 
 Todo 😆
 
-- TypeScript
-- JSDoc
 - ESlint
 
 ```
 npm install
-node main.js
+npm build // or tsc
+node lib/main.js
 ```
