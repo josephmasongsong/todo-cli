@@ -4,12 +4,15 @@
   "description": "",
   "main": "index.js",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "build": "tsc"
   },
   "keywords": [],
   "author": "Joseph Masongsong <joseph@josephmasongsong.com> (https://www.josephmasongsong.com/)",
   "license": "ISC",
   "dependencies": {
-    "inquirer": "^8.2.5"
+    "@types/inquirer": "^9.0.3",
+    "@types/node": "^18.15.11",
+    "inquirer": "^8.2.5",
+    "typescript": "^5.0.4"
   }
 }
