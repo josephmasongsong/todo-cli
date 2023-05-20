@@ -1,37 +1,13 @@
-import fs from 'fs/promises';
-import inquirer from 'inquirer';
+const fs = require('fs/promises');
+const path = require('path');
+const inquirer = require('inquirer');
 
-type Todo = {
-  id: string;
-  title: string;
-  complete: boolean;
-};
-
-type PathObjectKey = 'addTodo' | 'editTodo' | 'completeTodo' | 'deleteTodo' | 'showTodos' | 'mainMenu' | 'quitApp';
-
-type PathObject = {
-  [key in PathObjectKey]: (...args: any[]) => void;
-};
-
-type AnswerObjectKey = 'path' | 'title' | 'id' | 'confirmDelete' | 'complete';
-
-type Answer = {
-  [key in AnswerObjectKey]: string;
-};
-
-type Choices = { name: string; value: string }[];
-type When = (answer: Answer) => void;
-
-type QuestionObjectKey = 'type' | 'name' | 'message' | 'pageSize' | 'choices' | 'when';
-
-type Question = {
-  [key in QuestionObjectKey]?: string | number | Choices | When;
-};
+const filePath = path.join(__dirname, '../todos.json');
 
 let todos: Todo[] | null = null;
 
 const fetchTodos = async () => {
-  const data = await fs.readFile('todos.json');
+  const data = await fs.readFile(filePath);
   return JSON.parse(data.toString());
 };
 
@@ -41,7 +17,7 @@ const loadTodosData = async () => {
 
 const save = async (newTodos: Todo[]) => {
   const data = JSON.stringify(newTodos);
-  await fs.writeFile('todos.json', data);
+  await fs.writeFile(filePath, data);
   todos = newTodos;
   console.log('Saved!');
   prompt(questions1, choicesPath);
@@ -61,22 +37,18 @@ const generateID = () =>
     .replace(/[^a-z0-9]+/g, '')
     .substring(0, 8);
 
-const createTodo = (title: string) => {
-  return {
+const addTodo = (title: string) => {
+  const todo = {
     id: generateID(),
     title,
     complete: false,
   };
-};
-
-const addTodo = (title: string) => {
-  const todo = createTodo(title);
   const newTodos = [...todos!];
   newTodos.push(todo);
   save(newTodos);
 };
 
-const updateTodo = ({ id, title, complete }: Todo) => {
+const updateTodo = ({ id, title, complete }: Partial<Todo>) => {
   const newTodos = todos!.map(todo => {
     if (todo.id === id) {
       const newTodo = { ...todo };
@@ -98,29 +70,29 @@ const deleteTodo = (id: string) => {
   save(newTodos);
 };
 
-const prompt = async (questions: Question[], cb, id: string | null = null) => {
+const prompt = async (questions: Question[], cb: (answers: Answers) => void, id = null) => {
   const answers = await inquirer.prompt(questions);
   if (id != undefined) answers.id = id;
   cb(answers);
 };
 
 const pathObject: PathObject = {
-  addTodo: ({ title }: { title: string }) => addTodo(title),
-  editTodo: ({ id, title }: { id: string; title: string }) => updateTodo({ id, title }),
-  completeTodo: ({ id, complete }: { id: string; complete: boolean }) => updateTodo({ id, complete }),
-  deleteTodo: ({ confirmDelete, id }: { confirmDelete: boolean; id: string }) => {
+  addTodo: ({ title }) => addTodo(title),
+  editTodo: ({ id, title }) => updateTodo({ id, title }),
+  completeTodo: ({ id, complete }) => updateTodo({ id, complete }),
+  deleteTodo: ({ confirmDelete, id }) => {
     confirmDelete ? deleteTodo(id) : prompt(questions1, choicesPath);
   },
-  showTodos: ({ id }: { id: string }) => prompt(questions2, choicesPath, id),
+  showTodos: ({ id }) => prompt(questions2, choicesPath, id),
   mainMenu: () => prompt(questions1, choicesPath),
   quitApp: () => console.log('Good bye!'),
 };
 
-const choicesPath = ({ path, ...rest }: { path: PathObjectKey }) => {
-  return pathObject[path](rest);
+const choicesPath = ({ path, ...rest }: Answers) => {
+  return pathObject[path as PathObjectKey](rest);
 };
 
-const questions1: Question[] = [
+const questions1 = [
   {
     type: 'list',
     name: 'path',
@@ -135,7 +107,7 @@ const questions1: Question[] = [
     type: 'input',
     name: 'title',
     message: 'Describe your todo:',
-    when: (answers: Answer) => answers.path === 'addTodo',
+    when: (answers: Answers) => answers.path === 'addTodo',
   },
   {
     type: 'list',
@@ -143,11 +115,11 @@ const questions1: Question[] = [
     message: 'Select a todo to make changes:',
     pageSize: 25,
     choices: () => generateChoices(),
-    when: (answers: Answer) => answers.path === 'showTodos',
+    when: (answers: Answers) => answers.path === 'showTodos',
   },
 ];
 
-const questions2: Question[] = [
+const questions2 = [
   {
     type: 'list',
     name: 'path',
@@ -163,19 +135,19 @@ const questions2: Question[] = [
     type: 'input',
     name: 'title',
     message: 'Edit your todo:',
-    when: (answers: Answer) => answers.path === 'editTodo',
+    when: (answers: Answers) => answers.path === 'editTodo',
   },
   {
     type: 'confirm',
     name: 'confirmDelete',
     message: 'Are you sure you want to delete this todo?',
-    when: (answers: Answer) => answers.path === 'deleteTodo',
+    when: (answers: Answers) => answers.path === 'deleteTodo',
   },
   {
     type: 'confirm',
     name: 'complete',
     message: 'Is this todo complete?',
-    when: (answers: Answer) => answers.path === 'completeTodo',
+    when: (answers: Answers) => answers.path === 'completeTodo',
   },
 ];
 

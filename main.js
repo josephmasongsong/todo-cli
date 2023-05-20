@@ -1,5 +1,5 @@
-const fs = require('fs/promises');
-const inquirer = require('inquirer');
+import fs from 'fs/promises';
+import inquirer from 'inquirer';
 
 let todos = null;
 
